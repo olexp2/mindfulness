@@ -46,7 +46,7 @@ export function PrimaryButton({
     <button
       onClick={onClick}
       disabled={disabled}
-      className="rounded-xl bg-neutral-900 px-3 py-2 text-sm text-white shadow-sm transition active:scale-[0.99] disabled:opacity-40"
+      className="rounded-xl bg-neutral-900 px-4 py-3 text-sm font-medium text-white shadow-lg shadow-neutral-900/20 transition-all hover:shadow-xl hover:-translate-y-0.5 active:scale-[0.98] disabled:opacity-50 disabled:shadow-none dark:bg-white dark:text-black dark:shadow-white/10"
     >
       {children}
     </button>
@@ -63,7 +63,7 @@ export function GhostButton({
   return (
     <button
       onClick={onClick}
-      className="rounded-xl px-3 py-2 text-sm text-neutral-700 transition hover:bg-neutral-100 active:scale-[0.99]"
+      className="rounded-xl px-4 py-3 text-sm font-medium text-neutral-600 transition hover:bg-neutral-100 hover:text-neutral-900 active:scale-[0.98] dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-white"
     >
       {children}
     </button>
@@ -95,7 +95,6 @@ export function RuledTextarea(props: React.TextareaHTMLAttributes<HTMLTextAreaEl
       {...props}
       className={[
         "w-full resize-none rounded-xl border border-black/5 bg-white/70 p-3 text-sm outline-none",
-        "focus:ring-2 focus:ring-neutral-200",
         props.className ?? "",
       ].join(" ")}
     />

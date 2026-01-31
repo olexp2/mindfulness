@@ -2,41 +2,41 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { CalendarDays, Grid2X2, Target, TrendingUp, Settings } from "lucide-react";
+import type { ComponentType } from "react";
+type IconType = ComponentType<{ size?: number }>;
 
-const tabs = [
-  { href: "/today", label: "Сегодня", icon: "✍️" },
-  { href: "/week", label: "Неделя", icon: "📓" },
-  { href: "/review", label: "Обзор", icon: "✅" },
-  { href: "/profile", label: "Профиль", icon: "⚙️" },
+type Tab = { href: string; label: string; Icon: IconType };
+
+const TABS: Tab[] = [
+  { href: "/today", label: "Сегодня", Icon: CalendarDays },
+  { href: "/week", label: "Неделя", Icon: Grid2X2 },
+  { href: "/goals", label: "Цели", Icon: Target },
+  { href: "/progress", label: "Прогресс", Icon: TrendingUp },
+  { href: "/settings", label: "Настройки", Icon: Settings },
 ];
 
 export default function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0">
-      <div className="mx-auto max-w-md px-3 pb-4">
-        <div className="rounded-2xl border border-black/5 bg-white/80 p-2 shadow-[0_12px_30px_rgba(0,0,0,0.12)] backdrop-blur">
-          <div className="grid grid-cols-4 gap-2">
-            {tabs.map((t) => {
-              const active = pathname === t.href;
-              return (
-                <Link
-                  key={t.href}
-                  href={t.href}
-                  className={[
-                    "flex flex-col items-center justify-center rounded-xl px-2 py-2 text-xs transition",
-                    active ? "bg-neutral-900 text-white shadow-sm" : "text-neutral-700 hover:bg-neutral-100",
-                  ].join(" ")}
-                >
-                  <div className="text-base leading-none">{t.icon}</div>
-                  <div className="mt-1">{t.label}</div>
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-      </div>
+    <nav className="bottom-nav" aria-label="Навигация">
+      {TABS.map(({ href, label, Icon }) => {
+        const active = pathname === href || pathname?.startsWith(href + "/");
+        return (
+          <Link
+            key={href}
+            href={href}
+            className={[
+              "bottom-nav__item",
+              active ? "bottom-nav__item--active" : "",
+            ].join(" ")}
+          >
+            <Icon size={18} />
+            <span className="text-[11px]">{label}</span>
+          </Link>
+        );
+      })}
     </nav>
   );
 }

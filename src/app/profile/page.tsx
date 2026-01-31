@@ -2,6 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { getWeekStartISO, loadStore, saveStore, getOrCreateWeek, type ISODate } from "@/lib/osoznannostStore";
+import { ListLoadingSkeleton } from "@/components/LoadingSkeleton";
+import RippleButton from "@/components/RippleButton";
+import { Input } from "@/components/ui/input";
 
 export default function ProfilePage() {
   const currentWeekStart = useMemo(() => getWeekStartISO(new Date()), []);
@@ -57,7 +60,7 @@ export default function ProfilePage() {
     persist(next);
   }
 
-  if (!loaded) return <div className="text-sm text-neutral-500">Загружаю...</div>;
+  if (!loaded) return <ListLoadingSkeleton />;
 
   return (
     <div className="space-y-4">
@@ -66,24 +69,24 @@ export default function ProfilePage() {
         <div className="text-xs text-neutral-500">3–5 ролей достаточно. Не превращаем в список “всего на свете”.</div>
 
         <div className="mt-3 flex gap-2">
-          <input
+          <Input
             value={newRole}
             onChange={(e) => setNewRole(e.target.value)}
             placeholder="Добавить роль (например: Финансы)"
-            className="flex-1 rounded-xl border p-3 text-sm outline-none focus:ring-2 focus:ring-neutral-200"
+            className="flex-1 rounded-xl border p-3 text-sm h-auto"
           />
-          <button onClick={addRole} className="rounded-xl bg-neutral-900 px-3 py-2 text-sm text-white">
+          <RippleButton onClick={addRole} variant="default" className="rounded-xl bg-neutral-900 px-3 py-2 text-sm text-white hover:bg-neutral-900">
             +
-          </button>
+          </RippleButton>
         </div>
 
         <div className="mt-3 flex flex-wrap gap-2">
           {roles.map((r) => (
             <div key={r} className="flex items-center gap-2 rounded-full border bg-neutral-50 px-3 py-1 text-sm">
               <span>{r}</span>
-              <button onClick={() => removeRole(r)} className="text-neutral-500 hover:text-neutral-900">
+              <RippleButton onClick={() => removeRole(r)} variant="ghost" size="sm" className="text-neutral-500 hover:text-neutral-900 h-auto p-0">
                 ✕
-              </button>
+              </RippleButton>
             </div>
           ))}
         </div>
@@ -106,15 +109,16 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      <button
+      <RippleButton
         onClick={() => {
           localStorage.removeItem("osoznannost:v1");
           reload();
         }}
-        className="w-full rounded-2xl border bg-white px-4 py-3 text-sm text-neutral-700 hover:bg-neutral-100"
+        variant="ghost"
+        className="w-full rounded-2xl border bg-white px-4 py-3 text-sm text-neutral-700 hover:bg-neutral-100 h-auto"
       >
         Сбросить данные (только localStorage)
-      </button>
+      </RippleButton>
     </div>
   );
 }

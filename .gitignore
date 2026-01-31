@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# trae IDE
+.trae/
+
+# testing files
+TESTING_CHECKLIST.md
+TEST_REPORT.md

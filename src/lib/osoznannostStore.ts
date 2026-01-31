@@ -10,12 +10,26 @@ export type BigRock = {
   done: boolean;
 };
 
+export type RecurrenceType = "once" | "daily" | "weekly" | "monthly";
+
+export type Recurrence = {
+  type: RecurrenceType;
+  daysOfWeek?: (1 | 2 | 3 | 4 | 5 | 6 | 7)[];
+};
+
 export type ScheduledItem = {
   id: string;
   title: string;
   start: TimeHM;
   end: TimeHM;
   done: boolean;
+  goalId?: string;
+  goalIds?: string[];
+  color?: string;
+  icon?: string;
+  streak?: number;
+  recurrence?: Recurrence;
+  status?: "active" | "completed" | "skipped";
 };
 
 export type DayPlan = {
@@ -38,6 +52,30 @@ export type WeekPlan = {
 export type StoreV2 = {
   version: 2;
   weeks: Record<ISODate, WeekPlan>; // key = weekStart ISO (Mon)
+};
+
+export type Milestone = {
+  id: string;
+  date: ISODate;
+  description: string;
+  completed: boolean;
+};
+
+export type GlobalGoal = {
+  id: string;
+  title: string;
+  deadline?: ISODate;
+  progress: number;
+  status: "active" | "completed" | "paused";
+  milestones?: Milestone[];
+  color?: string;
+  icon?: string;
+};
+
+export type StoreV3 = {
+  version: 3;
+  weeks: Record<ISODate, WeekPlan>;
+  goals: GlobalGoal[];
 };
 
 const STORAGE_KEY = "osoznannost:v1";
@@ -139,51 +177,98 @@ export function defaultDayPlan(): DayPlan {
   return { schedule: [], top3: [], reflection: "" };
 }
 
-function migrateToV2(parsed: any): StoreV2 {
+function isRecord(x: unknown): x is Record<string, unknown> {
+  return typeof x === "object" && x !== null;
+}
+
+function migrateToV2(parsed: unknown): StoreV2 {
   // если старая версия/непонятный формат — начинаем чисто
   const base: StoreV2 = { version: 2, weeks: {} };
-  if (!parsed || typeof parsed !== "object" || typeof parsed.weeks !== "object") return base;
+  if (!isRecord(parsed) || !isRecord(parsed.weeks)) return base;
 
   // v2 уже ок
-  if (parsed.version === 2) return parsed as StoreV2;
+  if ((parsed as { version?: unknown }).version === 2) return parsed as StoreV2;
 
   // v1 -> v2
-  const weeks: Record<ISODate, WeekPlan> = parsed.weeks ?? {};
+  const weeks: Record<ISODate, WeekPlan> =
+    ((parsed.weeks as Record<string, unknown>) as unknown as Record<ISODate, WeekPlan>) ?? {};
   for (const ws of Object.keys(weeks) as ISODate[]) {
     const week = weeks[ws];
     if (!week || typeof week !== "object") continue;
 
     week.days = week.days ?? {};
     for (const dayKey of Object.keys(week.days) as ISODate[]) {
-      const day = week.days[dayKey] as any;
-      if (!day || typeof day !== "object") {
+      const dayUnknown = week.days[dayKey] as unknown;
+      if (!isRecord(dayUnknown)) {
         week.days[dayKey] = defaultDayPlan();
         continue;
       }
-      if (!Array.isArray(day.schedule)) day.schedule = [];
-      if (!Array.isArray(day.top3)) day.top3 = [];
-      if (typeof day.reflection !== "string") day.reflection = "";
+      const day = dayUnknown as Partial<DayPlan>;
+      if (!Array.isArray(day.schedule)) (day as DayPlan).schedule = [];
+      if (!Array.isArray(day.top3)) (day as DayPlan).top3 = [];
+      if (typeof day.reflection !== "string") (day as DayPlan).reflection = "";
+      week.days[dayKey] = day as DayPlan;
     }
   }
 
   return { version: 2, weeks };
 }
 
-export function loadStore(): StoreV2 {
+function migrateToV3(parsed: unknown): StoreV3 {
+  const v2 = migrateToV2(parsed);
+  const rawGoals =
+    isRecord(parsed) && Array.isArray((parsed as { goals?: unknown }).goals)
+      ? ((parsed as { goals?: unknown }).goals as unknown[])
+      : [];
+  const goals: GlobalGoal[] = rawGoals.length
+    ? rawGoals.map((g) => {
+        const r = isRecord(g) ? (g as Record<string, unknown>) : {};
+        const id = typeof r.id === "string" ? r.id : uid("goal");
+        const title = typeof r.title === "string" ? r.title : "";
+        const deadline =
+          typeof r.deadline === "string" && /^\d{4}-\d{2}-\d{2}$/.test(r.deadline as string)
+            ? (r.deadline as ISODate)
+            : undefined;
+        const progress =
+          typeof r.progress === "number" ? Math.max(0, Math.min(100, r.progress)) : 0;
+        const status =
+          r.status === "completed" || r.status === "paused" ? (r.status as GlobalGoal["status"]) : "active";
+        const milestones = Array.isArray(r.milestones)
+          ? (r.milestones as unknown[]).map((m) => {
+              const mr = isRecord(m) ? (m as Record<string, unknown>) : {};
+              return {
+                id: typeof mr.id === "string" ? mr.id : uid("milestone"),
+                date: typeof mr.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(mr.date as string)
+                  ? (mr.date as ISODate)
+                  : getTodayISO(),
+                description: typeof mr.description === "string" ? mr.description : "",
+                completed: typeof mr.completed === "boolean" ? mr.completed : false,
+              };
+            })
+          : [];
+        const color = typeof r.color === "string" ? r.color : undefined;
+        const icon = typeof r.icon === "string" ? r.icon : undefined;
+        return { id, title, deadline, progress, status, milestones, color, icon };
+      })
+    : [];
+  return { version: 3, weeks: v2.weeks, goals };
+}
+
+export function loadStore(): StoreV3 {
   if (typeof window === "undefined") {
-    return { version: 2, weeks: {} };
+    return { version: 3, weeks: {}, goals: [] };
   }
-  const parsed = safeParse<any>(localStorage.getItem(STORAGE_KEY));
-  const migrated = migrateToV2(parsed);
+  const parsed = safeParse<unknown>(localStorage.getItem(STORAGE_KEY));
+  const migrated = migrateToV3(parsed);
   return migrated;
 }
 
-export function saveStore(store: StoreV2) {
+export function saveStore(store: StoreV3) {
   if (typeof window === "undefined") return;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
 }
 
-export function getOrCreateWeek(store: StoreV2, weekStart: ISODate): WeekPlan {
+export function getOrCreateWeek(store: StoreV3, weekStart: ISODate): WeekPlan {
   const existing = store.weeks[weekStart];
   if (existing) return existing;
   const created = defaultWeekPlan();
@@ -205,4 +290,112 @@ export function clampSchedule(items: ScheduledItem[]) {
 
 export function sortSchedule(items: ScheduledItem[]) {
   return [...items].sort((a, b) => hmToMinutes(a.start) - hmToMinutes(b.start));
+}
+
+export function addGoal(
+  store: StoreV3,
+  title: string,
+  deadline?: ISODate,
+  color?: string,
+  icon?: string
+): GlobalGoal {
+  const goal: GlobalGoal = {
+    id: uid("goal"),
+    title,
+    deadline,
+    progress: 0,
+    status: "active",
+    milestones: [],
+    color,
+    icon,
+  };
+  store.goals = [...(store.goals ?? []), goal];
+  return goal;
+}
+
+export function updateGoal(store: StoreV3, id: string, patch: Partial<GlobalGoal>) {
+  store.goals = (store.goals ?? []).map((g) =>
+    g.id === id
+      ? {
+          ...g,
+          ...patch,
+          progress:
+            patch.progress != null
+              ? Math.max(0, Math.min(100, patch.progress))
+              : g.progress,
+        }
+      : g
+  );
+}
+
+export function removeGoal(store: StoreV3, id: string) {
+  store.goals = (store.goals ?? []).filter((g) => g.id !== id);
+}
+
+export function addMilestone(
+  store: StoreV3,
+  goalId: string,
+  date: ISODate,
+  description: string
+): Milestone | null {
+  const goal = store.goals?.find((g) => g.id === goalId);
+  if (!goal) return null;
+
+  const milestone: Milestone = {
+    id: uid("milestone"),
+    date,
+    description,
+    completed: false,
+  };
+
+  goal.milestones = [...(goal.milestones ?? []), milestone];
+  goal.milestones.sort((a, b) => a.date.localeCompare(b.date));
+
+  return milestone;
+}
+
+export function updateMilestone(
+  store: StoreV3,
+  goalId: string,
+  milestoneId: string,
+  patch: Partial<Milestone>
+) {
+  const goal = store.goals?.find((g) => g.id === goalId);
+  if (!goal || !goal.milestones) return;
+
+  goal.milestones = goal.milestones.map((m) =>
+    m.id === milestoneId ? { ...m, ...patch } : m
+  );
+
+  goal.milestones.sort((a, b) => a.date.localeCompare(b.date));
+}
+
+export function removeMilestone(store: StoreV3, goalId: string, milestoneId: string) {
+  const goal = store.goals?.find((g) => g.id === goalId);
+  if (!goal || !goal.milestones) return;
+
+  goal.milestones = goal.milestones.filter((m) => m.id !== milestoneId);
+}
+
+export function isoToDate(iso: ISODate): Date {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
+export function shouldShowTaskOnDate(task: ScheduledItem, date: ISODate): boolean {
+  if (!task.recurrence || task.recurrence.type === "once") return true;
+
+  const taskDate = isoToDate(date);
+  const dayOfWeek = ((taskDate.getDay() + 6) % 7) + 1;
+
+  switch (task.recurrence.type) {
+    case "daily":
+      return true;
+    case "weekly":
+      return task.recurrence.daysOfWeek?.includes(dayOfWeek as 1 | 2 | 3 | 4 | 5 | 6 | 7) ?? false;
+    case "monthly":
+      return true;
+    default:
+      return true;
+  }
 }

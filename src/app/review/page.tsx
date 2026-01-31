@@ -2,7 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { getWeekStartISO, loadStore, saveStore, getOrCreateWeek } from "@/lib/osoznannostStore";
-import { Card, RuledTextarea } from "@/components/NotebookUI";
+import { NotebookCard as Card } from "@/components/NotebookCard";
+import { ListLoadingSkeleton } from "@/components/LoadingSkeleton";
+import { Textarea } from "@/components/ui/textarea";
 
 export default function ReviewPage() {
   const weekStart = useMemo(() => getWeekStartISO(new Date()), []);
@@ -27,7 +29,7 @@ export default function ReviewPage() {
     saveStore(store);
   }
 
-  if (!loaded) return <div className="text-sm text-neutral-600">Загружаю страницу...</div>;
+  if (!loaded) return <ListLoadingSkeleton />;
 
   return (
     <div className="space-y-4">
@@ -39,7 +41,7 @@ export default function ReviewPage() {
         <div className="space-y-3">
           <div>
             <div className="text-sm font-medium">Что сработало?</div>
-            <RuledTextarea
+            <Textarea
               value={worked}
               onChange={(e) => {
                 setWorked(e.target.value);
@@ -47,12 +49,13 @@ export default function ReviewPage() {
               }}
               placeholder="Например: планировал big rocks утром, не вечером"
               rows={4}
+              className="w-full resize-none rounded-xl border border-black/5 bg-white/70 p-3 text-sm"
             />
           </div>
 
           <div>
             <div className="text-sm font-medium">Что мешало?</div>
-            <RuledTextarea
+            <Textarea
               value={blocked}
               onChange={(e) => {
                 setBlocked(e.target.value);
@@ -60,6 +63,7 @@ export default function ReviewPage() {
               }}
               placeholder="Например: хаотичные чаты и созвоны без цели"
               rows={4}
+              className="w-full resize-none rounded-xl border border-black/5 bg-white/70 p-3 text-sm"
             />
           </div>
         </div>
