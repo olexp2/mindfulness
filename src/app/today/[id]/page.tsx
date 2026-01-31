@@ -41,7 +41,7 @@ export default function EditTaskPage() {
   const [iconKey, setIconKey] = useState<IconKey>("target");
   const [goals, setGoals] = useState<GlobalGoal[]>([]);
   const [selectedGoalIds, setSelectedGoalIds] = useState<string[]>([]);
-  const [recurrenceType, setRecurrenceType] = useState<"once" | "daily" | "weekly">("once");
+  const [recurrenceType, setRecurrenceType] = useState<"once" | "daily" | "weekly" | "monthly">("once");
   const [selectedDaysOfWeek, setSelectedDaysOfWeek] = useState<(1 | 2 | 3 | 4 | 5 | 6 | 7)[]>([]);
 
   const [titleError, setTitleError] = useState("");

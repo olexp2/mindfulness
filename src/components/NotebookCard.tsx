@@ -15,7 +15,7 @@ export function NotebookCard({
   right,
   className,
 }: {
-  title?: string;
+  title?: React.ReactNode;
   subtitle?: string;
   variant?: "note" | "note-soft" | "sticky";
   children: React.ReactNode;
