@@ -425,45 +425,47 @@ export default function TodayPage() {
       </div>
 
       {/* Кнопки внизу - прикреплены к навигационному меню */}
-      <div className="fixed bottom-[88px] left-0 right-0 max-w-[480px] mx-auto px-3 space-y-0 pointer-events-none">
-        <div className="bg-gradient-to-t from-white via-white/95 to-white/80 dark:from-slate-900 dark:via-slate-900/95 dark:to-slate-900/80 pt-8 pb-4 pointer-events-none">
-          <div className="pointer-events-auto w-full">
-            <Card variant="note-soft" contentClassName="px-0">
+      <div className="fixed bottom-[88px] left-0 right-0 flex justify-center space-y-0 pointer-events-none">
+        <div className="w-full max-w-[480px] px-3">
+          <div className="bg-gradient-to-t from-white via-white/95 to-white/80 dark:from-slate-900 dark:via-slate-900/95 dark:to-slate-900/80 pt-8 pb-4 pointer-events-none w-full">
+            <div className="pointer-events-auto w-full">
+            <div className="note-soft rounded-2xl w-full">
               <RippleButton
                 onClick={() => {
                   triggerHaptic('medium');
                   router.push("/today/new");
                 }}
                 variant="ghost"
-                className="group flex w-full flex-col items-center justify-center rounded-[20px] py-6 text-neutral-500 transition-all duration-300 hover:bg-neutral-100 hover:scale-[1.02] active:scale-95 dark:text-slate-400 dark:hover:bg-white/5 h-auto"
+                className="group !flex !w-full flex-col items-center justify-center rounded-[20px] py-6 text-neutral-500 transition-all duration-300 hover:bg-neutral-100 hover:scale-[1.02] active:scale-95 dark:text-slate-400 dark:hover:bg-white/5 h-auto"
               >
                 <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-neutral-100 to-neutral-200 shadow-sm transition-all duration-300 group-hover:shadow-md group-hover:scale-110 dark:from-white/10 dark:to-white/5 dark:shadow-none">
                   <Plus size={24} className="opacity-70 transition-all duration-300 group-hover:opacity-100 group-hover:scale-110" />
                 </div>
                 <span className="text-xs font-bold uppercase tracking-wider opacity-70 transition-opacity duration-300 group-hover:opacity-100">Создать задачу</span>
               </RippleButton>
-            </Card>
+            </div>
           </div>
 
           {!reflection && !isEditingNote && (
             <div className="pointer-events-auto w-full mt-3">
-              <Card variant="note-soft" contentClassName="px-0">
+              <div className="note-soft rounded-2xl w-full">
                 <RippleButton
                   onClick={() => {
                     triggerHaptic('light');
                     setIsEditingNote(true);
                   }}
                   variant="ghost"
-                  className="group flex w-full flex-col items-center justify-center rounded-[20px] py-6 text-neutral-500 transition-all duration-300 hover:bg-neutral-100 hover:scale-[1.02] active:scale-95 dark:text-slate-400 dark:hover:bg-white/5 h-auto"
+                  className="group !flex !w-full flex-col items-center justify-center rounded-[20px] py-6 text-neutral-500 transition-all duration-300 hover:bg-neutral-100 hover:scale-[1.02] active:scale-95 dark:text-slate-400 dark:hover:bg-white/5 h-auto"
                 >
                   <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-neutral-100 to-neutral-200 shadow-sm transition-all duration-300 group-hover:shadow-md group-hover:scale-110 dark:from-white/10 dark:to-white/5 dark:shadow-none">
                     <Pencil size={24} className="opacity-70 transition-all duration-300 group-hover:opacity-100 group-hover:scale-110" />
                   </div>
                   <span className="text-xs font-bold uppercase tracking-wider opacity-70 transition-opacity duration-300 group-hover:opacity-100">Добавить заметку</span>
                 </RippleButton>
-              </Card>
+              </div>
             </div>
           )}
+          </div>
         </div>
       </div>
 

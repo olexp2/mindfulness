@@ -155,6 +155,7 @@ textarea {
   padding-top: 20px;
   padding-bottom: calc(360px + env(safe-area-inset-bottom, 0px));
   min-height: 100vh;
+  box-sizing: border-box;
 
   display: flex;
   flex-direction: column;
@@ -325,11 +326,15 @@ textarea {
 .note-soft {
   background: rgba(245, 245, 245, 0.7);
   border: none;
+  display: block;
+  width: 100%;
 }
 
 .dark .note-soft {
   background: rgba(30, 41, 59, 0.4);
   border: none;
+  display: block;
+  width: 100%;
 }
 
 .sticky {
