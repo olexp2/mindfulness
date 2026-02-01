@@ -425,10 +425,10 @@ export default function TodayPage() {
       </div>
 
       {/* Кнопки внизу - прикреплены к навигационному меню */}
-      <div className="fixed bottom-[88px] left-1/2 -translate-x-1/2 w-screen max-w-[480px] space-y-0 pointer-events-none">
+      <div className="fixed bottom-[88px] left-0 right-0 max-w-[480px] mx-auto px-3 space-y-0 pointer-events-none">
         <div className="bg-gradient-to-t from-white via-white/95 to-white/80 dark:from-slate-900 dark:via-slate-900/95 dark:to-slate-900/80 pt-8 pb-4 pointer-events-none">
-          <div className="pointer-events-auto w-full px-4">
-            <Card variant="note-soft">
+          <div className="pointer-events-auto w-full">
+            <Card variant="note-soft" contentClassName="px-0">
               <RippleButton
                 onClick={() => {
                   triggerHaptic('medium');
@@ -446,8 +446,8 @@ export default function TodayPage() {
           </div>
 
           {!reflection && !isEditingNote && (
-            <div className="pointer-events-auto w-full px-4 mt-3">
-              <Card variant="note-soft">
+            <div className="pointer-events-auto w-full mt-3">
+              <Card variant="note-soft" contentClassName="px-0">
                 <RippleButton
                   onClick={() => {
                     triggerHaptic('light');

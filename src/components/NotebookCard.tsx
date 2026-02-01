@@ -14,6 +14,7 @@ export function NotebookCard({
   children,
   right,
   className,
+  contentClassName,
 }: {
   title?: React.ReactNode;
   subtitle?: string;
@@ -21,6 +22,7 @@ export function NotebookCard({
   children: React.ReactNode;
   right?: React.ReactNode;
   className?: string;
+  contentClassName?: string;
 }) {
   const variantClasses = {
     note: "bg-white/90 border-black/5 shadow-sm",
@@ -53,7 +55,7 @@ export function NotebookCard({
           </div>
         </CardHeader>
       )}
-      <CardContent className={cn(title || subtitle || right ? "pt-0" : "")}>
+      <CardContent className={cn(title || subtitle || right ? "pt-0" : "", contentClassName)}>
         {children}
       </CardContent>
     </ShadcnCard>

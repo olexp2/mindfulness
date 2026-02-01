@@ -99,13 +99,28 @@ div[role="button"]:focus-visible {
 }
 
 /* ВАЖНО: чтобы флексы/фикс работали нормально */
-html,
-body {
+html {
   height: 100%;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  background: #111827;
+}
+
+html.dark {
+  background: #111827;
+}
+
+html:not(.dark) {
+  background: #f3f4f6;
 }
 
 body {
+  height: 100%;
+  width: 100%;
+  max-width: 100%;
   margin: 0;
+  overflow-x: hidden;
   @apply antialiased;
 }
 
@@ -134,7 +149,7 @@ textarea {
 /* ОСНОВНОЙ КАРКАС: адаптивный, по центру */
 .app-shell {
   width: 100%;
-  max-width: 480px;
+  max-width: 100%;
   margin: 0 auto;
   padding: 12px;
   padding-top: 20px;
@@ -146,6 +161,12 @@ textarea {
   gap: 20px;
 
   position: relative;
+}
+
+@media (min-width: 480px) {
+  .app-shell {
+    max-width: 480px;
+  }
 }
 
 /* ШАПКА */
@@ -183,15 +204,15 @@ textarea {
 /* Нижняя панель */
 .bottom-nav {
   position: fixed;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 12px;
+  right: 12px;
   bottom: 16px;
 
-  width: calc(100% - 24px); /* Отступы по бокам */
-  max-width: 460px; /* Чуть меньше макс. ширины шелла */
+  max-width: 456px;
+  margin: 0 auto;
 
   display: flex;
-  justify-content: space-around; /* Равномерное распределение */
+  justify-content: space-around;
   align-items: center;
 
   padding: 12px 16px;
@@ -203,7 +224,7 @@ textarea {
   backdrop-filter: blur(16px);
 
   z-index: 60;
-  padding-bottom: env(safe-area-inset-bottom, 12px); /* Для iPhone */
+  padding-bottom: env(safe-area-inset-bottom, 12px);
 }
 
 .dark .bottom-nav {
