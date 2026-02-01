@@ -284,7 +284,7 @@ export default function EditTaskPage() {
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 pb-24">
-            <div className="space-y-6 max-w-lg mx-auto">
+            <div className="space-y-6 w-full max-w-full mx-auto">
                  <label className="block animate-in fade-in slide-in-from-bottom-2 duration-300" style={{ animationDelay: '50ms', animationFillMode: 'backwards' }}>
                     <span className="mb-2 block text-sm font-bold text-neutral-600 dark:text-slate-300 uppercase tracking-wider">
                       Название

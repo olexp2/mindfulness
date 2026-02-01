@@ -191,7 +191,7 @@ export default function EditGoalPage() {
           </div>
         </div>
 
-      <Card variant="note-soft">
+      <Card variant="note-soft" contentClassName="px-3">
         <div className="space-y-6">
           <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
             <label className="mb-2 block text-sm font-bold text-neutral-600 dark:text-slate-300 uppercase tracking-wider">
@@ -333,7 +333,7 @@ export default function EditGoalPage() {
         </div>
       </Card>
 
-      <Card variant="note-soft">
+      <Card variant="note-soft" contentClassName="px-3">
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold text-neutral-900 dark:text-white">
