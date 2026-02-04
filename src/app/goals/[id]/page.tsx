@@ -19,6 +19,8 @@ import { COLOR_PRESETS, ICONS, type IconKey } from "@/lib/constants";
 import { triggerHaptic } from "@/lib/haptics";
 import { ActionSheet } from "@/components/ActionSheet";
 
+export const dynamic = 'force-dynamic';
+
 function isISODate(v: string): v is ISODate {
   return /^\d{4}-\d{2}-\d{2}$/.test(v);
 }

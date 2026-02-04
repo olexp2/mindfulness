@@ -22,6 +22,8 @@ import { MoreVertical, Trash2, Copy } from "lucide-react";
 import { ActionSheet } from "@/components/ActionSheet";
 import { triggerHaptic } from "@/lib/haptics";
 
+export const dynamic = 'force-dynamic';
+
 const SELECTED_DAY_KEY = "mindfulness:selectedDay";
 
 export default function EditTaskPage() {

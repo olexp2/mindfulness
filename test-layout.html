@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5, viewport-fit=cover">
+  <title>Test Layout</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    html {
+      height: 100%;
+      width: 100%;
+      max-width: 100%;
+      overflow-x: hidden;
+      background: #111827;
+    }
+    
+    body {
+      height: 100%;
+      width: 100%;
+      max-width: 100%;
+      margin: 0;
+      overflow-x: hidden;
+    }
+    
+    .app-shell {
+      width: 100%;
+      max-width: 100%;
+      margin: 0 auto;
+      padding: 12px;
+      min-height: 100vh;
+      box-sizing: border-box;
+      background: #1e293b;
+    }
+    
+    @media (min-width: 480px) {
+      .app-shell {
+        max-width: 480px;
+      }
+    }
+    
+    .note-soft {
+      background: rgba(30, 41, 59, 0.4);
+      border: none;
+      display: block;
+      width: 100%;
+    }
+    
+    * {
+      outline: 1px solid rgba(255, 0, 0, 0.3);
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <div style="background: #334155; padding: 20px; margin-bottom: 20px;">
+      <h1 style="color: white;">Контент страницы</h1>
+    </div>
+  </div>
+
+  <div class="fixed bottom-[88px] left-0 right-0 flex justify-center pointer-events-none" style="outline: 3px solid lime;">
+    <div class="w-full max-w-[480px] px-3" style="outline: 3px solid cyan;">
+      <div class="bg-gradient-to-t from-slate-900 via-slate-900/95 to-slate-900/80 pt-8 pb-4 w-full" style="outline: 3px solid yellow;">
+        <div class="pointer-events-auto w-full" style="outline: 3px solid magenta;">
+          <div class="note-soft rounded-2xl w-full" style="outline: 3px solid orange;">
+            <button class="group flex w-full flex-col items-center justify-center rounded-[20px] py-6 text-neutral-500" style="outline: 3px solid red; background: rgba(245, 245, 245, 0.7);">
+              <span class="text-xs font-bold uppercase tracking-wider">СОЗДАТЬ ЗАДАЧУ</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    console.log('viewport width:', window.innerWidth);
+    console.log('body scrollWidth:', document.body.scrollWidth);
+    console.log('html scrollWidth:', document.documentElement.scrollWidth);
+    
+    const button = document.querySelector('button');
+    console.log('button width:', button.offsetWidth);
+    console.log('button parent width:', button.parentElement.offsetWidth);
+  </script>
+</body>
+</html>
