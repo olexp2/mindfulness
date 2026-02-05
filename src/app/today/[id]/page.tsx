@@ -56,12 +56,8 @@ export default function EditTaskPage() {
     setGoals(store.goals ?? []);
 
     const savedDate = localStorage.getItem(SELECTED_DAY_KEY);
-    const dateToUse = (savedDate && /^\d{4}-\d{2}-\d{2}$/.test(savedDate) ? savedDate : null) as ISODate | null;
-    
-    if (!dateToUse) {
-      router.back();
-      return;
-    }
+    const today = new Date().toISOString().split('T')[0] as ISODate;
+    const dateToUse = (savedDate && /^\d{4}-\d{2}-\d{2}$/.test(savedDate) ? savedDate : today) as ISODate;
 
     setSelectedDate(dateToUse);
 
