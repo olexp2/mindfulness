@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { CalendarDays, Grid2X2, Target, TrendingUp, Settings } from "lucide-react";
 import type { ComponentType } from "react";
-type IconType = ComponentType<{ size?: number }>;
+type IconType = ComponentType<{ size?: number; className?: string }>;
 
 type Tab = { href: string; label: string; Icon: IconType };
 
