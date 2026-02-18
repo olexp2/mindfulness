@@ -214,9 +214,10 @@ textarea {
 
   display: flex;
   justify-content: space-around;
-  align-items: center;
+  align-items: stretch;
 
-  padding: 12px 16px;
+  padding: 0 16px;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
   border-radius: 24px;
 
   background: rgba(255, 255, 255, 0.9);
@@ -225,7 +226,6 @@ textarea {
   backdrop-filter: blur(16px);
 
   z-index: 60;
-  padding-bottom: env(safe-area-inset-bottom, 12px);
   box-sizing: border-box;
 }
 
@@ -242,11 +242,12 @@ textarea {
   justify-content: center;
   gap: 4px;
 
-  padding: 8px 6px;
+  padding: 12px 6px;
   border-radius: 14px;
 
   color: rgba(15, 23, 42, 0.78);
   text-decoration: none;
+  transition: background 200ms ease, color 200ms ease;
 }
 
 .dark .bottom-nav__item {

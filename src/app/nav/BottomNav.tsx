@@ -32,8 +32,8 @@ export default function BottomNav() {
               active ? "bottom-nav__item--active" : "",
             ].join(" ")}
           >
-            <Icon size={18} />
-            <span className="text-[11px]">{label}</span>
+            <Icon size={18} className="shrink-0" />
+            <span className="text-[11px] leading-tight">{label}</span>
           </Link>
         );
       })}
