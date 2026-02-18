@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   loadStore,
@@ -19,16 +19,16 @@ import {
 import { NotebookCard as Card } from "@/components/NotebookCard";
 import ProgressBar from "@/components/ProgressBar";
 import { getIconByKey } from "@/lib/constants";
-import { Pencil, ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { PageLoadingSkeleton } from "@/components/LoadingSkeleton";
 import { triggerHaptic } from "@/lib/haptics";
 import RippleButton from "@/components/RippleButton";
 import TaskCheckbox from "@/components/TaskCheckbox";
 import { ActionSheet } from "@/components/ActionSheet";
-import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
 const SELECTED_DAY_KEY = "mindfulness:selectedDay";
+const SWIPE_THRESHOLD = 50;
 
 const MONTHS = [
   "Январь","Февраль","Март","Апрель","Май","Июнь",
@@ -69,6 +69,9 @@ export default function TodayPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [clickPosition, setClickPosition] = useState<{ x: number; y: number } | undefined>(undefined);
 
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
+
   useEffect(() => {
     const store = loadStore();
     const week = getOrCreateWeek(store, weekStart);
@@ -93,6 +96,12 @@ export default function TodayPage() {
   function handleChangeDay(date: ISODate) {
     setSelectedDate(date);
     localStorage.setItem(SELECTED_DAY_KEY, date);
+    triggerHaptic('light');
+  }
+
+  function goToToday() {
+    setSelectedDate(todayISO);
+    localStorage.setItem(SELECTED_DAY_KEY, todayISO);
     triggerHaptic('light');
   }
 
@@ -171,7 +180,7 @@ export default function TodayPage() {
     persist(schedule, text);
   }
 
-  function goToPreviousWeek() {
+  const goToPreviousWeek = useCallback(() => {
     const currentWeekStartDate = isoToDate(weekStart);
     currentWeekStartDate.setDate(currentWeekStartDate.getDate() - 7);
     const newWeekStart = getWeekStartISO(currentWeekStartDate);
@@ -179,9 +188,9 @@ export default function TodayPage() {
     setSelectedDate(newSelectedDate);
     localStorage.setItem(SELECTED_DAY_KEY, newSelectedDate);
     triggerHaptic('light');
-  }
+  }, [weekStart]);
 
-  function goToNextWeek() {
+  const goToNextWeek = useCallback(() => {
     const currentWeekStartDate = isoToDate(weekStart);
     currentWeekStartDate.setDate(currentWeekStartDate.getDate() + 7);
     const newWeekStart = getWeekStartISO(currentWeekStartDate);
@@ -189,9 +198,35 @@ export default function TodayPage() {
     setSelectedDate(newSelectedDate);
     localStorage.setItem(SELECTED_DAY_KEY, newSelectedDate);
     triggerHaptic('light');
-  }
+  }, [weekStart]);
 
-  const doneCount = schedule.filter((x) => x.done && x.status !== "skipped").length;
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  }, []);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (touchStartX.current === null || touchStartY.current === null) return;
+    const deltaX = e.changedTouches[0].clientX - touchStartX.current;
+    const deltaY = e.changedTouches[0].clientY - touchStartY.current;
+    touchStartX.current = null;
+    touchStartY.current = null;
+
+    if (Math.abs(deltaX) < SWIPE_THRESHOLD || Math.abs(deltaY) > Math.abs(deltaX)) return;
+
+    if (deltaX < 0) {
+      goToNextWeek();
+    } else {
+      goToPreviousWeek();
+    }
+  }, [goToNextWeek, goToPreviousWeek]);
+
+  const activeTasks = schedule.filter((x) => !x.done && x.status !== "skipped");
+  const doneTasks = schedule.filter((x) => x.done && x.status !== "skipped");
+  const skippedTasks = schedule.filter((x) => x.status === "skipped");
+  const allActive = [...activeTasks, ...skippedTasks];
+
+  const doneCount = doneTasks.length;
   const totalCount = schedule.filter((x) => x.status !== "skipped").length;
   const progress = totalCount === 0 ? 0 : Math.round((doneCount / totalCount) * 100);
 
@@ -204,80 +239,145 @@ export default function TodayPage() {
 
   const monthYearLabel = formatMonthYear(isoToDate(selectedDate));
 
-  return (
-    <>
-      <div className="space-y-5">
-        {/* Заголовок периода + переключатель режима просмотра */}
-        <div className="flex items-center justify-between">
-          <div className="text-[28px] font-bold text-white dark:text-white">
-            {monthYearLabel}
-          </div>
-          
-          <div className="flex items-center gap-3">
-            <div className="flex rounded-full bg-neutral-700 p-1.5 dark:bg-slate-700">
-              <button className="rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition-all duration-200 hover:shadow-xl active:scale-95">
-                Неделя
-              </button>
-              <button className="rounded-full px-5 py-2.5 text-sm font-semibold text-neutral-300 transition-all duration-200 hover:bg-neutral-600/50 hover:text-white active:scale-95 dark:text-slate-300 dark:hover:bg-slate-600/50">
-                Месяц
-              </button>
-            </div>
-            
-            <div className="flex items-center gap-1">
-              <button 
-                onClick={goToPreviousWeek}
-                className="flex h-9 w-9 items-center justify-center rounded-full text-white/80 transition-all duration-200 hover:bg-white/10 hover:text-white active:scale-90"
-                aria-label="Предыдущая неделя"
-              >
-                <ChevronLeft size={20} strokeWidth={2.5} />
-              </button>
-              <button 
-                onClick={goToNextWeek}
-                className="flex h-9 w-9 items-center justify-center rounded-full text-white/80 transition-all duration-200 hover:bg-white/10 hover:text-white active:scale-90"
-                aria-label="Следующая неделя"
-              >
-                <ChevronRight size={20} strokeWidth={2.5} />
-              </button>
-            </div>
-          </div>
+  function renderTaskCard(item: ScheduledItem, index: number, isDone: boolean) {
+    const linkedGoals = item.goalIds
+      ? goals.filter(g => item.goalIds?.includes(g.id))
+      : [];
+    
+    const primaryGoal = linkedGoals[0];
+    const accent = item.color ?? primaryGoal?.color ?? "#38bdf8";
+    const Icon = getIconByKey(item.icon ?? primaryGoal?.icon);
+    
+    const timeDisplay = (item.start && item.end && item.start !== "00:00" && item.end !== "00:00")
+      ? `${item.start}–${item.end}`
+      : "В течение дня";
+
+    const isSkipped = item.status === "skipped";
+
+    return (
+      <div
+        key={item.id}
+        onClick={(e) => handleTaskClick(item, e)}
+        className="relative flex items-center cursor-pointer transition-all duration-200 active:scale-[0.98] animate-in fade-in slide-in-from-bottom-2"
+        style={{
+          animationDelay: `${index * 50}ms`,
+          animationFillMode: 'backwards',
+          opacity: isSkipped ? 0.5 : 1,
+          backgroundColor: isDone ? 'rgba(156, 163, 175, 0.08)' : undefined,
+          minHeight: '72px',
+          gap: '24px',
+          paddingTop: '20px',
+          paddingBottom: '20px',
+          paddingLeft: '28px',
+          paddingRight: '28px',
+        }}
+      >
+        <div
+          className="absolute left-0 top-0 bottom-0 w-1 rounded-r-sm"
+          style={{ backgroundColor: isDone || isSkipped ? '#9ca3af' : accent }}
+        />
+
+        <div
+          className="flex shrink-0 items-center justify-center rounded-2xl"
+          style={{
+            width: '56px',
+            height: '56px',
+            backgroundColor: isDone || isSkipped ? 'rgba(156, 163, 175, 0.15)' : `${accent}20`,
+          }}
+        >
+          <Icon
+            size={32}
+            strokeWidth={1.8}
+            style={{
+              color: isDone || isSkipped ? '#9ca3af' : accent,
+            }}
+          />
         </div>
 
-        {/* Навигация по дням недели */}
-        <Card variant="note-soft">
-          <div className="flex justify-between gap-1.5">
-            {weekDates.map(({ dow, date }) => {
-              const isSelected = date === selectedDate;
-              const isToday = date === todayISO;
-              return (
-                <RippleButton
-                  key={date}
-                  onClick={() => handleChangeDay(date)}
-                  variant={isSelected ? "default" : "ghost"}
-                  className={[
-                    "flex flex-1 flex-col items-center rounded-[20px] py-3.5 transition-all duration-200 h-auto",
-                    isSelected
-                      ? "bg-[#6366f1] text-white shadow-lg shadow-indigo-500/30 scale-105 hover:bg-[#6366f1]"
-                      : "text-neutral-500 hover:bg-neutral-100 hover:scale-105 active:scale-95 dark:text-slate-400 dark:hover:bg-white/5",
-                  ].join(" ")}
-                >
-                  <span className="text-[10px] font-bold uppercase tracking-wider opacity-70">
-                    {DOW_LABEL[dow]}
-                  </span>
-                  <span className="text-[19px] font-extrabold mt-1.5">
-                    {isoToDate(date).getDate()}
-                  </span>
-                  {isToday && (
-                    <div className={[
-                      "mt-2 h-1.5 w-1.5 rounded-full",
-                      isSelected ? "bg-white" : "bg-indigo-500"
-                    ].join(" ")} />
-                  )}
-                </RippleButton>
-              );
-            })}
-          </div>
-        </Card>
-        {/* Прогресс дня */}
+        <div className="flex flex-col gap-1.5 min-w-0 flex-1">
+          <span
+            className={[
+              "font-bold truncate transition-all duration-300",
+              isDone
+                ? "line-through text-neutral-400 dark:text-slate-500"
+                : isSkipped
+                  ? "text-neutral-400 dark:text-slate-500"
+                  : "text-neutral-900 dark:text-white",
+            ].join(" ")}
+            style={{ fontSize: '22px', lineHeight: '28px' }}
+          >
+            {item.title.length > 200 ? `${item.title.slice(0, 200)}...` : item.title}
+          </span>
+          <span
+            style={{ fontSize: '13px', lineHeight: '18px', color: '#9ca3af' }}
+          >
+            {timeDisplay}
+          </span>
+        </div>
+
+        <div
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleDone(item.id);
+          }}
+        >
+          <TaskCheckbox done={item.done} onToggle={() => {}} />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative">
+      <div className="space-y-5">
+        <span
+          onClick={goToToday}
+          className="text-[28px] font-bold text-neutral-900 dark:text-white cursor-pointer"
+        >
+          {monthYearLabel}
+        </span>
+
+        <div
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+          className="select-none"
+        >
+          <Card variant="note-soft">
+            <div className="flex justify-between gap-1.5">
+              {weekDates.map(({ dow, date }) => {
+                const isSelected = date === selectedDate;
+                const isToday = date === todayISO;
+                return (
+                  <RippleButton
+                    key={date}
+                    onClick={() => handleChangeDay(date)}
+                    variant={isSelected ? "default" : "ghost"}
+                    className={[
+                      "flex flex-1 flex-col items-center rounded-[20px] py-3.5 transition-all duration-200 h-auto",
+                      isSelected
+                        ? "bg-gradient-to-br from-[var(--color-dark-from)] to-[var(--color-dark-to)] text-white shadow-lg shadow-purple-500/25 scale-105 hover:opacity-90"
+                        : "text-neutral-500 hover:bg-neutral-100 hover:scale-105 active:scale-95 dark:text-slate-400 dark:hover:bg-white/5",
+                    ].join(" ")}
+                  >
+                    <span className="text-[10px] font-bold uppercase tracking-wider opacity-70">
+                      {DOW_LABEL[dow]}
+                    </span>
+                    <span className="text-[19px] font-extrabold mt-1.5">
+                      {isoToDate(date).getDate()}
+                    </span>
+                    {isToday && (
+                      <div className={[
+                        "mt-2 h-1.5 w-1.5 rounded-full",
+                        isSelected ? "bg-white" : "bg-[var(--color-dark-from)]"
+                      ].join(" ")} />
+                    )}
+                  </RippleButton>
+                );
+              })}
+            </div>
+          </Card>
+        </div>
+
         <Card variant="note-soft">
           <div className="mb-4 flex items-end justify-between px-1">
             <div>
@@ -295,179 +395,83 @@ export default function TodayPage() {
           <ProgressBar value={progress} />
         </Card>
 
-        {/* Дела (Список) */}
-        <div className="space-y-3">
-          {schedule.length === 0 ? (
-            <>
-              <Card variant="note-soft">
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-orange-400/20 to-amber-400/20">
-                    <svg
-                      width="40"
-                      height="40"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="text-orange-500 dark:text-orange-400"
-                    >
-                      <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
-                    </svg>
-                  </div>
-                  <p className="text-base font-semibold text-neutral-700 dark:text-slate-200">
-                    Задачи на сегодня пока не заданы 🛠️
-                  </p>
+        <div>
+          {allActive.length === 0 && doneTasks.length === 0 ? (
+            <Card variant="note-soft">
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-orange-400/20 to-amber-400/20">
+                  <svg
+                    width="40"
+                    height="40"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="text-orange-500 dark:text-orange-400"
+                  >
+                    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+                  </svg>
                 </div>
-              </Card>
-              
-            </>
+                <p className="text-base font-semibold text-neutral-700 dark:text-slate-200">
+                  Задачи на сегодня пока не заданы 🛠️
+                </p>
+              </div>
+            </Card>
           ) : (
             <>
-              {schedule.map((item, index) => {
-                const linkedGoals = item.goalIds
-                  ? goals.filter(g => item.goalIds?.includes(g.id))
-                  : [];
-                
-                const primaryGoal = linkedGoals[0];
-                const accent = item.color ?? primaryGoal?.color ?? "#38bdf8";
-                const Icon = getIconByKey(item.icon ?? primaryGoal?.icon);
-                
-                const timeDisplay = (item.start && item.end && item.start !== "00:00" && item.end !== "00:00")
-                  ? `${item.start}–${item.end}`
-                  : "В течение дня";
+              {allActive.length > 0 && (
+                <div className="rounded-2xl overflow-hidden border border-neutral-200 dark:border-slate-700 divide-y divide-neutral-200 dark:divide-slate-700 bg-white dark:bg-slate-800/50">
+                  {allActive.map((item, index) => renderTaskCard(item, index, false))}
+                </div>
+              )}
 
-                const isSkipped = item.status === "skipped";
-                
-                const cardBgColor = isSkipped ? "#9ca3af" : accent;
-                const borderColor = isSkipped 
-                  ? "transparent" 
-                  : item.done 
-                    ? "#10b981" 
-                    : "#eab308";
-
-                return (
-                  <div
-                    key={item.id}
-                    onClick={(e) => handleTaskClick(item, e)}
-                    className="relative flex items-center gap-3 rounded-[24px] p-4 shadow-md transition-all duration-300 hover:shadow-lg active:scale-[0.98] animate-in fade-in slide-in-from-bottom-2 cursor-pointer"
-                    style={{
-                      backgroundColor: cardBgColor,
-                      border: `3px solid ${borderColor}`,
-                      animationDelay: `${index * 50}ms`,
-                      animationFillMode: 'backwards',
-                      opacity: isSkipped ? 0.6 : 1,
-                    }}
-                  >
-                    <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm ml-3">
-                      <Icon size={32} strokeWidth={2} className="text-white" />
-                    </div>
-
-                    <div className="flex-1 min-w-0 ml-3">
-                      <h3 className={[
-                        "text-base font-semibold text-white transition-all duration-300",
-                        item.done ? "line-through opacity-80" : ""
-                      ].join(" ")}>
-                        {item.title.length > 200 ? `${item.title.slice(0, 200)}...` : item.title}
-                      </h3>
-                      <p className="mt-0.5 text-sm text-white/80">
-                        {timeDisplay}
-                      </p>
-                    </div>
-
-                    <div className="flex-shrink-0 mr-3">
-                      <div 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleDone(item.id);
-                        }}
-                        className="cursor-pointer"
-                      >
-                        <TaskCheckbox done={item.done} onToggle={() => {}} />
-                      </div>
-                    </div>
+              {doneTasks.length > 0 && (
+                <div className="mt-5">
+                  <div className="mb-2 px-1 text-xs font-bold uppercase tracking-wider text-neutral-400 dark:text-slate-500">
+                    Выполнено
                   </div>
-                );
-              })}
+                  <div className="rounded-2xl overflow-hidden border border-neutral-200 dark:border-slate-700 divide-y divide-neutral-200 dark:divide-slate-700 bg-white dark:bg-slate-800/50">
+                    {doneTasks.map((item, index) => renderTaskCard(item, index, true))}
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>
 
-        {/* Графический разделитель */}
-                <div className="flex items-center gap-4 my-8">
-                  <div className="flex-1 h-[2px] bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
-                  <div className="flex gap-1.5">
-                    <div className="w-1.5 h-1.5 rounded-full bg-white/30"></div>
-                    <div className="w-1.5 h-1.5 rounded-full bg-white/30"></div>
-                    <div className="w-1.5 h-1.5 rounded-full bg-white/30"></div>
-                  </div>
-                  <div className="flex-1 h-[2px] bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
-                </div>
-
-                {/* Заметка дня */}
-                {isEditingNote && (
-                  <Card title="Заметка дня" subtitle="" variant="note">
-                    <Textarea
-                      value={reflection}
-                      onChange={(e) => updateReflection(e.target.value)}
-                      placeholder="Напишите мысли или итоги дня..."
-                      rows={4}
-                      autoFocus={true}
-                      onBlur={() => {
-                        if (!reflection.trim()) setIsEditingNote(false);
-                      }}
-                      className="bg-transparent border-none shadow-none px-0 py-0 text-base resize-none"
-                    />
-                  </Card>
-                )}
-
+        {isEditingNote && (
+          <Card title="Заметка дня" subtitle="" variant="note">
+            <Textarea
+              value={reflection}
+              onChange={(e) => updateReflection(e.target.value)}
+              placeholder="Напишите мысли или итоги дня..."
+              rows={4}
+              autoFocus={true}
+              onBlur={() => {
+                if (!reflection.trim()) setIsEditingNote(false);
+              }}
+              className="bg-transparent border-none shadow-none px-0 py-0 text-base resize-none"
+            />
+          </Card>
+        )}
       </div>
 
-      {/* Кнопки внизу - прикреплены к навигационному меню */}
-      <div className="fixed bottom-[88px] left-1/2 -translate-x-1/2 w-[calc(100%-24px)] max-w-[480px] px-3 pointer-events-none">
-        <div className="w-full">
-          <div className="bg-gradient-to-t from-white via-white/95 to-white/80 dark:from-slate-900 dark:via-slate-900/95 dark:to-slate-900/80 pt-8 pb-4 pointer-events-none w-full">
-            <div className="pointer-events-auto w-full">
-            <div className="note-soft rounded-2xl w-full">
-              <RippleButton
-                onClick={() => {
-                  triggerHaptic('medium');
-                  router.push("/today/new");
-                }}
-                variant="ghost"
-                className="group flex w-full flex-col items-center justify-center rounded-[20px] py-6 text-neutral-500 transition-all duration-300 hover:bg-neutral-100 hover:scale-[1.02] active:scale-95 dark:text-slate-400 dark:hover:bg-white/5 h-auto"
-              >
-                <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-neutral-100 to-neutral-200 shadow-sm transition-all duration-300 group-hover:shadow-md group-hover:scale-110 dark:from-white/10 dark:to-white/5 dark:shadow-none">
-                  <Plus size={24} className="opacity-70 transition-all duration-300 group-hover:opacity-100 group-hover:scale-110" />
-                </div>
-                <span className="text-xs font-bold uppercase tracking-wider opacity-70 transition-opacity duration-300 group-hover:opacity-100">Создать задачу</span>
-              </RippleButton>
-            </div>
-          </div>
-
-          {!reflection && !isEditingNote && (
-            <div className="pointer-events-auto w-full mt-3">
-              <div className="note-soft rounded-2xl w-full">
-                <RippleButton
-                  onClick={() => {
-                    triggerHaptic('light');
-                    setIsEditingNote(true);
-                  }}
-                  variant="ghost"
-                  className="group flex w-full flex-col items-center justify-center rounded-[20px] py-6 text-neutral-500 transition-all duration-300 hover:bg-neutral-100 hover:scale-[1.02] active:scale-95 dark:text-slate-400 dark:hover:bg-white/5 h-auto"
-                >
-                  <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-neutral-100 to-neutral-200 shadow-sm transition-all duration-300 group-hover:shadow-md group-hover:scale-110 dark:from-white/10 dark:to-white/5 dark:shadow-none">
-                    <Pencil size={24} className="opacity-70 transition-all duration-300 group-hover:opacity-100 group-hover:scale-110" />
-                  </div>
-                  <span className="text-xs font-bold uppercase tracking-wider opacity-70 transition-opacity duration-300 group-hover:opacity-100">Добавить заметку</span>
-                </RippleButton>
-              </div>
-            </div>
-          )}
-          </div>
-        </div>
-      </div>
+      <button
+        onClick={() => {
+          triggerHaptic('medium');
+          router.push("/today/new");
+        }}
+        className="fixed z-50 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-[var(--color-dark-from)] to-[var(--color-dark-to)] shadow-xl shadow-purple-500/30 transition-all duration-200 hover:scale-110 active:scale-95"
+        style={{
+          bottom: '100px',
+          right: 'max(20px, calc(50% - 220px))',
+        }}
+        aria-label="Создать задачу"
+      >
+        <Plus size={32} strokeWidth={2.5} style={{ color: '#ffffff' }} />
+      </button>
 
       <ActionSheet
         open={actionSheetOpen}
@@ -488,7 +492,6 @@ export default function TodayPage() {
                   destructive: true,
                   onClick: () => {
                     if (selectedTask) {
-                      console.log('Deleting task:', selectedTask.id);
                       removeTask(selectedTask.id);
                       setActionSheetOpen(false);
                       setShowDeleteConfirm(false);
@@ -540,13 +543,12 @@ export default function TodayPage() {
                   destructive: true,
                   preventClose: true,
                   onClick: () => {
-                    console.log('Showing delete confirmation');
                     setShowDeleteConfirm(true);
                   },
                 },
               ]
         }
       />
-    </>
+    </div>
   );
 }
