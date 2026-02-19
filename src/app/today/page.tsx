@@ -22,7 +22,6 @@ import { getIconByKey } from "@/lib/constants";
 import { Plus } from "lucide-react";
 import { PageLoadingSkeleton } from "@/components/LoadingSkeleton";
 import { triggerHaptic } from "@/lib/haptics";
-import RippleButton from "@/components/RippleButton";
 import TaskCheckbox from "@/components/TaskCheckbox";
 import { ActionSheet } from "@/components/ActionSheet";
 import { Textarea } from "@/components/ui/textarea";
@@ -68,6 +67,10 @@ export default function TodayPage() {
   const [selectedTask, setSelectedTask] = useState<ScheduledItem | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [clickPosition, setClickPosition] = useState<{ x: number; y: number } | undefined>(undefined);
+  const [weekTaskStatus, setWeekTaskStatus] = useState<Record<string, "all_done" | "has_pending" | "none">>({});
+  const [slideDirection, setSlideDirection] = useState<"left" | "right" | null>(null);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const prevWeekStartRef = useRef<ISODate | null>(null);
 
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
@@ -80,9 +83,48 @@ export default function TodayPage() {
     setReflection(day.reflection);
     setIsEditingNote(!!day.reflection);
     setGoals(store.goals ?? []);
+
+    const status: Record<string, "all_done" | "has_pending" | "none"> = {};
+    for (const dow of [1, 2, 3, 4, 5, 6, 7] as const) {
+      const dateISO = getDayOfWeekISO(weekStart, dow);
+      const dayData = week.days[dateISO];
+      if (!dayData || dayData.schedule.length === 0) {
+        status[dateISO] = "none";
+      } else {
+        const nonSkipped = dayData.schedule.filter(t => t.status !== "skipped");
+        if (nonSkipped.length === 0) {
+          status[dateISO] = "none";
+        } else {
+          status[dateISO] = nonSkipped.every(t => t.done) ? "all_done" : "has_pending";
+        }
+      }
+    }
+    setWeekTaskStatus(status);
+
     saveStore(store);
     setLoaded(true);
   }, [selectedDate, weekStart]);
+
+  function recalcWeekTaskStatus() {
+    const store = loadStore();
+    const week = getOrCreateWeek(store, weekStart);
+    const status: Record<string, "all_done" | "has_pending" | "none"> = {};
+    for (const dow of [1, 2, 3, 4, 5, 6, 7] as const) {
+      const dateISO = getDayOfWeekISO(weekStart, dow);
+      const dayData = week.days[dateISO];
+      if (!dayData || dayData.schedule.length === 0) {
+        status[dateISO] = "none";
+      } else {
+        const nonSkipped = dayData.schedule.filter(t => t.status !== "skipped");
+        if (nonSkipped.length === 0) {
+          status[dateISO] = "none";
+        } else {
+          status[dateISO] = nonSkipped.every(t => t.done) ? "all_done" : "has_pending";
+        }
+      }
+    }
+    setWeekTaskStatus(status);
+  }
 
   function persist(nextSchedule = schedule, nextReflection = reflection) {
     const store = loadStore();
@@ -91,6 +133,7 @@ export default function TodayPage() {
     day.schedule = clampSchedule(sortSchedule(nextSchedule));
     day.reflection = nextReflection;
     saveStore(store);
+    recalcWeekTaskStatus();
   }
 
   function handleChangeDay(date: ISODate) {
@@ -181,6 +224,9 @@ export default function TodayPage() {
   }
 
   const goToPreviousWeek = useCallback(() => {
+    prevWeekStartRef.current = weekStart;
+    setSlideDirection("right");
+    setIsAnimating(true);
     const currentWeekStartDate = isoToDate(weekStart);
     currentWeekStartDate.setDate(currentWeekStartDate.getDate() - 7);
     const newWeekStart = getWeekStartISO(currentWeekStartDate);
@@ -188,9 +234,13 @@ export default function TodayPage() {
     setSelectedDate(newSelectedDate);
     localStorage.setItem(SELECTED_DAY_KEY, newSelectedDate);
     triggerHaptic('light');
+    setTimeout(() => setIsAnimating(false), 300);
   }, [weekStart]);
 
   const goToNextWeek = useCallback(() => {
+    prevWeekStartRef.current = weekStart;
+    setSlideDirection("left");
+    setIsAnimating(true);
     const currentWeekStartDate = isoToDate(weekStart);
     currentWeekStartDate.setDate(currentWeekStartDate.getDate() + 7);
     const newWeekStart = getWeekStartISO(currentWeekStartDate);
@@ -198,6 +248,7 @@ export default function TodayPage() {
     setSelectedDate(newSelectedDate);
     localStorage.setItem(SELECTED_DAY_KEY, newSelectedDate);
     triggerHaptic('light');
+    setTimeout(() => setIsAnimating(false), 300);
   }, [weekStart]);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
@@ -297,16 +348,24 @@ export default function TodayPage() {
         <div className="flex flex-col gap-1.5 min-w-0 flex-1">
           <span
             className={[
-              "font-bold truncate transition-all duration-300",
+              "font-bold transition-all duration-300",
               isDone
                 ? "line-through text-neutral-400 dark:text-slate-500"
                 : isSkipped
                   ? "text-neutral-400 dark:text-slate-500"
                   : "text-neutral-900 dark:text-white",
             ].join(" ")}
-            style={{ fontSize: '22px', lineHeight: '28px' }}
+            style={{
+              fontSize: '22px',
+              lineHeight: '28px',
+              display: 'block',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              maxWidth: '100%',
+            }}
           >
-            {item.title.length > 200 ? `${item.title.slice(0, 200)}...` : item.title}
+            {item.title}
           </span>
           <span
             style={{ fontSize: '13px', lineHeight: '18px', color: '#9ca3af' }}
@@ -316,6 +375,7 @@ export default function TodayPage() {
         </div>
 
         <div
+          className="shrink-0"
           onClick={(e) => {
             e.stopPropagation();
             toggleDone(item.id);
@@ -329,7 +389,7 @@ export default function TodayPage() {
 
   return (
     <div className="relative">
-      <div className="space-y-5">
+      <div>
         <span
           onClick={goToToday}
           className="text-[28px] font-bold text-neutral-900 dark:text-white cursor-pointer"
@@ -341,45 +401,76 @@ export default function TodayPage() {
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
           className="select-none"
+          style={{ marginTop: '20px' }}
         >
-          <Card variant="note-soft">
-            <div className="flex justify-between gap-1.5">
-              {weekDates.map(({ dow, date }) => {
-                const isSelected = date === selectedDate;
-                const isToday = date === todayISO;
-                return (
-                  <RippleButton
-                    key={date}
-                    onClick={() => handleChangeDay(date)}
-                    variant={isSelected ? "default" : "ghost"}
-                    className={[
-                      "flex flex-1 flex-col items-center rounded-[20px] py-3.5 transition-all duration-200 h-auto",
-                      isSelected
-                        ? "bg-gradient-to-br from-[var(--color-dark-from)] to-[var(--color-dark-to)] text-white shadow-lg shadow-purple-500/25 scale-105 hover:opacity-90"
-                        : "text-neutral-500 hover:bg-neutral-100 hover:scale-105 active:scale-95 dark:text-slate-400 dark:hover:bg-white/5",
-                    ].join(" ")}
-                  >
-                    <span className="text-[10px] font-bold uppercase tracking-wider opacity-70">
-                      {DOW_LABEL[dow]}
-                    </span>
-                    <span className="text-[19px] font-extrabold mt-1.5">
-                      {isoToDate(date).getDate()}
-                    </span>
-                    {isToday && (
-                      <div className={[
-                        "mt-2 h-1.5 w-1.5 rounded-full",
-                        isSelected ? "bg-white" : "bg-[var(--color-dark-from)]"
-                      ].join(" ")} />
-                    )}
-                  </RippleButton>
-                );
-              })}
-            </div>
-          </Card>
+          <div
+            className="flex justify-between gap-1.5"
+            style={{
+              animation: isAnimating
+                ? slideDirection === "left"
+                  ? "slideInFromRight 300ms ease-out forwards"
+                  : "slideInFromLeft 300ms ease-out forwards"
+                : undefined,
+            }}
+          >
+            {weekDates.map(({ dow, date }) => {
+              const isSelected = date === selectedDate;
+              const isToday = date === todayISO;
+              const taskStatus = weekTaskStatus[date];
+              return (
+                <div
+                  key={date}
+                  onClick={() => handleChangeDay(date)}
+                  className="relative flex flex-1 flex-col items-center py-5 cursor-pointer transition-all duration-200 active:scale-95"
+                >
+                  {isSelected && (
+                    <div
+                      className="absolute rounded-full bg-gradient-to-br from-[var(--color-dark-from)] to-[var(--color-dark-to)] shadow-lg shadow-purple-500/25"
+                      style={{
+                        width: '46px',
+                        height: '46px',
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                      }}
+                    />
+                  )}
+                  <span className={[
+                    "relative z-10 text-[10px] font-bold uppercase tracking-wider",
+                    isSelected ? "text-white" : "text-neutral-400 dark:text-slate-500",
+                  ].join(" ")}>
+                    {DOW_LABEL[dow]}
+                  </span>
+                  <span className={[
+                    "relative z-10 text-[19px] font-extrabold mt-1",
+                    isSelected
+                      ? "text-white"
+                      : isToday
+                        ? "text-[var(--color-dark-from)]"
+                        : "text-neutral-700 dark:text-slate-300",
+                  ].join(" ")}>
+                    {isoToDate(date).getDate()}
+                  </span>
+                  {taskStatus && taskStatus !== "none" && (
+                    <div className="relative z-10 mt-3 flex items-center justify-center" style={{ minHeight: '8px' }}>
+                      <div
+                        style={{
+                          width: '7px',
+                          height: '7px',
+                          borderRadius: '50%',
+                          backgroundColor: taskStatus === "all_done" ? '#10b981' : '#9ca3af',
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
 
-        <Card variant="note-soft">
-          <div className="mb-4 flex items-end justify-between px-1">
+        <div className="px-1" style={{ marginTop: '20px' }}>
+          <div className="mb-4 flex items-end justify-between">
             <div>
               <div className="text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-slate-400">
                 Прогресс дня
@@ -393,7 +484,7 @@ export default function TodayPage() {
             </div>
           </div>
           <ProgressBar value={progress} />
-        </Card>
+        </div>
 
         <div>
           {allActive.length === 0 && doneTasks.length === 0 ? (
@@ -422,7 +513,7 @@ export default function TodayPage() {
           ) : (
             <>
               {allActive.length > 0 && (
-                <div className="rounded-2xl overflow-hidden border border-neutral-200 dark:border-slate-700 divide-y divide-neutral-200 dark:divide-slate-700 bg-white dark:bg-slate-800/50">
+                <div className="overflow-hidden divide-y divide-neutral-200 dark:divide-slate-700 border-y border-neutral-200 dark:border-slate-700 bg-white dark:bg-slate-800/50">
                   {allActive.map((item, index) => renderTaskCard(item, index, false))}
                 </div>
               )}
@@ -432,7 +523,7 @@ export default function TodayPage() {
                   <div className="mb-2 px-1 text-xs font-bold uppercase tracking-wider text-neutral-400 dark:text-slate-500">
                     Выполнено
                   </div>
-                  <div className="rounded-2xl overflow-hidden border border-neutral-200 dark:border-slate-700 divide-y divide-neutral-200 dark:divide-slate-700 bg-white dark:bg-slate-800/50">
+                  <div className="overflow-hidden divide-y divide-neutral-200 dark:divide-slate-700 border-y border-neutral-200 dark:border-slate-700 bg-white dark:bg-slate-800/50">
                     {doneTasks.map((item, index) => renderTaskCard(item, index, true))}
                   </div>
                 </div>
